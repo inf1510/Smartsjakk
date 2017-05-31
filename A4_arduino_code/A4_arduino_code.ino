@@ -1,22 +1,28 @@
 #include <Wire.h>
-#include <LiquidTWI2.h>
-#include "LedControl.h"
+#include <LiquidTWI2.h>    // LCD library 
+#include "LedControl.h"    // Led-matrix library
 #include <SPI.h>           // SPI library
 #include <SdFat.h>         // SDFat Library
 #include <SdFatUtil.h>     // SDFat Util Library
 #include <SFEMP3Shield.h>  // Mp3 Shield Library
 
+// Init. LCD
 LiquidTWI2 lcd(0);
 
+// Make SD-card element
 SdFat sd;
+// Make MP3Player element
 SFEMP3Shield MP3player;
+// Constants for MP3-player
 const uint8_t volume = 35;
 const uint16_t monoMode = 1;
 
+// Setting I/O pins
 const byte whitePin = 18;
 const byte blackPin = 19;
 const byte menuPin = 3;
 
+// Creating helper bytes for LED-matrix
 byte full = B11111111;
 byte empty = B00000000;
 
@@ -28,6 +34,7 @@ byte empty = B00000000;
 int mode = 0;
 boolean whiteTurn = true;
 
+// Variables to keep track of time and time modes
 int minutes = 10; 
 int seconds = 0;
 int minutes2 = 10;
@@ -37,16 +44,21 @@ int dec2 = 0;
 int addTime = 0;
 int timeModes[7][2] = {{3, 0}, {3, 2}, {5, 2}, {10, 0}, {15, 10}, {30, 0}, {45, 45}};
 int timeMode = 3;
+
+// Helper valiables
 int i = 0; int j = 0;
 int standings = 32;
 
+// Debounce variables
 static unsigned long last_interrupt_time = 0;
 static unsigned long timer_time = 0;
 static unsigned long last_music_time = 0;
 
+// Creating LED controll variables
 LedControl lc=LedControl(11,13,12,4);
 LedControl lc2=LedControl(30,34,32,4);
  
+// Setting up environment
 void setup() {
   lcd_setup();
   lcd.setMCPType(LTI_TYPE_MCP23017);
@@ -54,18 +66,21 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("<             Music>");
 
+  // Setting up interrupt pins
   attachInterrupt(digitalPinToInterrupt(whitePin), white , RISING);
   attachInterrupt(digitalPinToInterrupt(blackPin), black , RISING);
   attachInterrupt(digitalPinToInterrupt(menuPin), menu , RISING);
 
+  // Setting up input
   pinMode(40, INPUT);
 
+  // calling setup functions
   setupMatrix();
-
   initSD();
   initMP3Player();
 }
 
+// function to play random song/stop song
 void music(){
   unsigned long music_time = millis();
   if (music_time - last_music_time > 200){
@@ -78,6 +93,7 @@ void music(){
   }
 }
 
+// black press function
 void black() {
   unsigned long interrupt_time = millis();
   if (interrupt_time - last_interrupt_time > 200){
@@ -100,6 +116,7 @@ void black() {
   }
 }
 
+// white press function
 void white() {
   unsigned long interrupt_time = millis();
   if (interrupt_time - last_interrupt_time > 200){
@@ -122,6 +139,7 @@ void white() {
   }
 }
 
+// Increase time white
 void addTimeWhite(){
   seconds += addTime;
   if (seconds > 59){
@@ -130,6 +148,7 @@ void addTimeWhite(){
   }
 }
 
+// Increase time black
 void addTimeBlack(){
   seconds2 += addTime;
   if (seconds2 > 59){
@@ -138,6 +157,7 @@ void addTimeBlack(){
   }
 }
 
+// Menu press function
 void menu() {
   unsigned long interrupt_time = millis();
   if (interrupt_time - last_interrupt_time > 200){
@@ -160,6 +180,7 @@ void menu() {
   }
 }
 
+// increase time mode function
 void increaseTime(){
   if (timeMode != 6) {timeMode++;}
   minutes = timeModes[timeMode][0];
@@ -167,6 +188,7 @@ void increaseTime(){
   addTime = timeModes[timeMode][1];
 }
 
+// decrease time mode function
 void decreaseTime(){
   if (timeMode != 0) {timeMode--;}
   minutes = timeModes[timeMode][0];
@@ -174,6 +196,7 @@ void decreaseTime(){
   addTime = timeModes[timeMode][1];
 }
 
+// reset variables and mode function
 void reset(){
   seconds = 0;
   seconds2 = 0;
@@ -187,6 +210,7 @@ void reset(){
   standings = 32;
 }
  
+// main chess clock function
 void countDown() {
   unsigned long count_time = millis();
   if (count_time - timer_time > 40){
@@ -219,6 +243,7 @@ void countDown() {
   }
 }
 
+// setup liquid lcd function
 void lcd_setup(){
   for (i = 0; i < 4; i++){
     lc.shutdown(i, false);
@@ -231,6 +256,7 @@ void lcd_setup(){
   }
 }
 
+// Matrix init. function
 void setupMatrix() {
   for (i = 0; i < 8; i++){
     for (j = 0; j < 4; j++){
@@ -240,6 +266,7 @@ void setupMatrix() {
   }
 }
 
+// change standings var. & print to matrix
 void updateMatrix(){
   if (whiteTurn){standings -= random(1, 4)*random(1, 4);}
   else {standings += random(1, 4)*random(1, 4);}
@@ -248,6 +275,7 @@ void updateMatrix(){
   setupMatrix();
 }
 
+// Main loop
 void loop() {
   switch (mode){
     case 0:
@@ -312,17 +340,20 @@ void loop() {
   if (digitalRead(40)){music();}
 }
 
+// function to play track labled int
 void playTrack(int track){
   if (MP3player.isPlaying())
     MP3player.stopTrack();
   uint8_t result = MP3player.playTrack(track);
 }
 
+// stop playing track
 void stopTrack(){
   if (MP3player.isPlaying())
     MP3player.stopTrack();
 }
 
+// init. SD card
 void initSD(){
   if(!sd.begin(SD_SEL, SPI_HALF_SPEED)) 
     sd.initErrorHalt();
@@ -330,6 +361,7 @@ void initSD(){
     sd.errorHalt("sd.chdir");
 }
 
+// init MP3 player module
 void initMP3Player()
 {
   uint8_t result = MP3player.begin();
